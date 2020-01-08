@@ -14,16 +14,12 @@ product-level forecast.
 A simple forecast based on average daily sales * probability of sale is used to determine expected demand
 
 ## Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria
++ **Decision Rule**:
++ For each product in ASRS, sort totes in ascending order of units
++ Products in OSR whose units < Expected Units
+    + Move required number of totes where total stock >= required difference fro ASRS to OSR
 
-## Decision Rule:
-# A. For each product in ASRS, sort totes in descending order of units
-
-
-# 1. Products in OSR whose units < Expected Units
-#   a. Move required number of totes where total stock >= required difference fro ASRS to OSR
-
-
-# 2. Products in OSR whose units >= Expected Units
-#   a. Send extra totes to ASRS, where necessary
-#   b. Do nothing where OSR Units = Expected Units
++ Products in OSR whose units >= Expected Units
+    + Send extra totes to ASRS, where necessary
+    + Do nothing where OSR Units = Expected Units
 
