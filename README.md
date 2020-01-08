@@ -11,10 +11,12 @@
 As this algorithm relies on shop demand for stocked products, so best approach may be to develop a 
 product-level forecast.
 
+A simple forecast based on average daily sales * probability of sale is used to determine expected demand
+
 ## Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria
 
 ## Decision Rule:
-# A. For each product in ASRS, sort totes in ascending order of units
+# A. For each product in ASRS, sort totes in descending order of units
 
 
 # 1. Products in OSR whose units < Expected Units

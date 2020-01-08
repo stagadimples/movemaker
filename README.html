@@ -386,11 +386,34 @@ summary {
 <div id="begin-with-all-stocked-products-in-the-miniload" class="section level2">
 <h2>Begin with all stocked products in the Miniload</h2>
 </div>
-<div id="assign-likelihood-of-order-and-anticipated-units" class="section level2">
-<h2>Assign likelihood of order and anticipated units</h2>
+<div id="approach" class="section level2">
+<h2>Approach</h2>
+<p>As this algorithm relies on shop demand for stocked products, so best approach may be to develop a product-level forecast.</p>
+<p>A simple forecast based on average daily sales * probability of sale is used to determine expected demand</p>
 </div>
 <div id="assign-likelihood-of-tote-selection-for-totes-containing-chosen-products-and-meeting-units-criteria" class="section level2">
 <h2>Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria</h2>
+</div>
+<div id="decision-rule" class="section level2">
+<h2>Decision Rule:</h2>
+</div>
+<div id="a.-for-each-product-in-asrs-sort-totes-in-descending-order-of-units" class="section level1">
+<h1>A. For each product in ASRS, sort totes in descending order of units</h1>
+</div>
+<div id="products-in-osr-whose-units-expected-units" class="section level1">
+<h1>1. Products in OSR whose units &lt; Expected Units</h1>
+</div>
+<div id="a.-move-required-number-of-totes-where-total-stock-required-difference-fro-asrs-to-osr" class="section level1">
+<h1>a. Move required number of totes where total stock &gt;= required difference fro ASRS to OSR</h1>
+</div>
+<div id="products-in-osr-whose-units-expected-units-1" class="section level1">
+<h1>2. Products in OSR whose units &gt;= Expected Units</h1>
+</div>
+<div id="a.-send-extra-totes-to-asrs-where-necessary" class="section level1">
+<h1>a. Send extra totes to ASRS, where necessary</h1>
+</div>
+<div id="b.-do-nothing-where-osr-units-expected-units" class="section level1">
+<h1>b. Do nothing where OSR Units = Expected Units</h1>
 </div>
 
 
