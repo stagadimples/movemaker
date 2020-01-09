@@ -108,7 +108,7 @@ osr_shortfall <- osr %>%
   setDT(.)
 
 
-
+# From ASRS to OSR to cover shortfall
 to_osr1 <- asrs %>%
   inner_join(osr_shortfall, by="ITEM_NUMBER") %>%
   mutate(CLASSIFICATION = if_else(REQUIRED <= CUMUNITS, 1, 0)) %>%
