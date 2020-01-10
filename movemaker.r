@@ -14,6 +14,7 @@ gc()
 
 ##########################################################################################################
 livecon <- dbConnect(odbc::odbc(), dsn = "live", pwd = "atis0815")
+simcon <- dbConnect(odbc::odbc(), dsn = "simulation", pwd = "sim123")
 ##########################################################################################################
 
 stock <- tbl(livecon, sql(
@@ -121,10 +122,6 @@ additional_sales <- daily_sales[daily_sales_only]
 
 total_expected_demand <- rbind(confirmed_sales, additional_sales)
 
-
-dbDisconnect(livecon)
-
-
 ###############################################################################################################
 
 asrs <- merge(stock[LOCATION == 'ASRS'], total_expected_demand, by.x = "ITEM_NUMBER", by.y = "PROD_ID")[, TOTAL_STOCK := sum(QUANTITY), by=ITEM_NUMBER]
@@ -182,4 +179,23 @@ to_osr <- to_osr1 %>%
 # Prescribed moves based on expected shop demand for the day
 # This table may now be used to populate imp_cont_info_man in motion. The column names have been carefully chosen to allign the 2 tables 
 moves <- rbind(cbind(TARGET_STATE_NAME = "Z-MOVE_ASRS", to_asrs), cbind(TARGET_STATE_NAME = "Z-MOVE_OSR", rbind(to_osr1, to_osr2)))[
-  , .(LICENCEPLATE, TARGET_STATE_NAME, SOURCE_ZONE_NAME="Z-ABIN2BIN", TIMESTAMP = Sys.time(), STATUS = 90)]
+  , .(LICENCEPLATE, TARGET_STATE_NAME, SOURCE_ZONE_NAME="Z-ABIN2BIN", TIMESTAMP = as.character(Sys.time()), STATUS = 90)]
+
+
+# Write moves into a table in Simulation Server
+dbWriteTable(simcon, 
+               "TEST_MINILOAD_REORG", 
+               value=moves,
+               overwrite = TRUE,
+               field.types = c(
+                 LICENCEPLATE = "varchar2(50)",
+                 TARGET_STATE_NAME = "varchar2(50)",
+                 SOURCE_ZONE_NAME = "varchar2(50)",
+                 TIMESTAMP = "date",
+                 STATUS = "number"
+               )
+             )
+
+
+# Disconnect from databases
+dbDisconnect(livecon); dbDisconnect(simcon)
