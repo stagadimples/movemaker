@@ -393,27 +393,20 @@ summary {
 </div>
 <div id="assign-likelihood-of-tote-selection-for-totes-containing-chosen-products-and-meeting-units-criteria" class="section level2">
 <h2>Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria</h2>
-</div>
-<div id="decision-rule" class="section level2">
-<h2>Decision Rule:</h2>
-</div>
-<div id="a.-for-each-product-in-asrs-sort-totes-in-descending-order-of-units" class="section level1">
-<h1>A. For each product in ASRS, sort totes in descending order of units</h1>
-</div>
-<div id="products-in-osr-whose-units-expected-units" class="section level1">
-<h1>1. Products in OSR whose units &lt; Expected Units</h1>
-</div>
-<div id="a.-move-required-number-of-totes-where-total-stock-required-difference-fro-asrs-to-osr" class="section level1">
-<h1>a. Move required number of totes where total stock &gt;= required difference fro ASRS to OSR</h1>
-</div>
-<div id="products-in-osr-whose-units-expected-units-1" class="section level1">
-<h1>2. Products in OSR whose units &gt;= Expected Units</h1>
-</div>
-<div id="a.-send-extra-totes-to-asrs-where-necessary" class="section level1">
-<h1>a. Send extra totes to ASRS, where necessary</h1>
-</div>
-<div id="b.-do-nothing-where-osr-units-expected-units" class="section level1">
-<h1>b. Do nothing where OSR Units = Expected Units</h1>
+<ul>
+<li><strong>Decision Rule</strong>:</li>
+<li>For each product in ASRS, sort totes in ascending order of units</li>
+<li>Products in OSR whose units &lt; Expected Units
+<ul>
+<li>Move required number of totes where total stock &gt;= required difference fro ASRS to OSR</li>
+</ul></li>
+<li>Products in OSR whose units &gt;= Expected Units
+<ul>
+<li>Send extra totes to ASRS, where necessary</li>
+<li>Do nothing where OSR Units = Expected Units</li>
+</ul></li>
+<li>To track the accuracy of the algorithm, the table TEST_MINILOAD_REORG has been created in Simulation Server, and will capture the output upon execution. This table will be dropped upon completion of the project, as this output will be written directly into IMP_CONT_INFO_MAN in motion.</li>
+</ul>
 </div>
 
 

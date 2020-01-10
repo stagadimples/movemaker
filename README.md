@@ -22,4 +22,7 @@ A simple forecast based on average daily sales * probability of sale is used to 
 + Products in OSR whose units >= Expected Units
     + Send extra totes to ASRS, where necessary
     + Do nothing where OSR Units = Expected Units
+    
++ To track the accuracy of the algorithm, the table TEST_MINILOAD_REORG has been created in Simulation Server, and 
+will capture the output upon execution. This table will be dropped upon completion of the project, as this output will be written directly into IMP_CONT_INFO_MAN in motion.
 
