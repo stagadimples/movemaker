@@ -74,7 +74,7 @@ where order_type = 'SHOP'
   collect() %>%
   mutate(EXP_DEMAND=ceiling(EXP_DEMAND)) %>%
   select(PROD_ID, LIKELIHOOD, EXP_DEMAND) %>%
-  filter(LIKELIHOOD > 0.5) %>% # specify acceptable minimum likelihood
+  #filter(LIKELIHOOD > 0.5) %>% # specify acceptable minimum likelihood
   setDT(.)
 
 
@@ -100,7 +100,7 @@ confirmed_sales <- tbl(livecon, sql(
    select prod_id
     , unit_qty
    from d2c_next_day_demand
-   where trunc(input_date) = trunc(sysdate) - 1
+   where trunc(input_date) = trunc(sysdate)
  )
  group by prod_id
 "
