@@ -20,14 +20,20 @@ To develop and effective Miniload re-organisation model based on anticipated sho
 
 + A simple forecast based on average daily sales * probability of sale is used to determine expected demand
 + Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria
-+ For each product in ASRS, sort totes in ascending order of units
-+ Products in OSR whose units < Expected Units
-    + Move required number of totes where total stock >= required difference fro ASRS to OSR
 
-+ Products in OSR whose units >= Expected Units
-    + Send extra totes to ASRS, where necessary
-    + Do nothing where OSR Units = Expected Units
-    
+### Moves to ASRS
++ All totes in OSR for which there is no expected demand must be moved to the ASRS.
++ All totes above minimum required to fulfill expected demand must be moved to ASRS.
+
+### Moves to OSR
++ For any all products in OSR with units fall short of demand, additional totes must be moved from ASRS into OSR to make up for shortfall.
++ Where stock for products with expected demand is held in ASRS, required volume must be moved to OSR to meet expected demand.
++ For each product in ASRS, sort totes in ascending order of units
+
+### Do Nothing
++ Where available totes available in OSR serves the minimum required to fulfill expected demand, nothing is moved.
+
+
 + To track the accuracy of the algorithm, the table TEST_MINILOAD_REORG has been created in Simulation Server, and 
 will capture the output upon execution. This table will be dropped upon completion of the project, as this output will be written directly into IMP_CONT_INFO_MAN in motion.
 
