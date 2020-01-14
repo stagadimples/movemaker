@@ -368,33 +368,38 @@ summary {
 <div id="section" class="section level98">
 <p></p>
 </div>
-<div id="author-isaac-adjei-attah" class="section level3">
-<h3>Author: Isaac Adjei-Attah</h3>
-</div>
 <div id="movemaker-algorithm" class="section level3">
 <h3>MoveMaker Algorithm</h3>
 </div>
+<div id="author-isaac-adjei-attah" class="section level3">
+<h3>Author: Isaac Adjei-Attah</h3>
+</div>
 <div id="objective" class="section level3">
 <h3>Objective:</h3>
+<p>To develop and effective Miniload re-organisation model based on anticipated shop order demand ##################################################################################################</p>
 </div>
-<div id="to-develop-and-effective-miniload-re-organisation-model-based-on-anticipated-shop-order-demand" class="section level3">
-<h3>To develop and effective Miniload re-organisation model based on anticipated shop order demand</h3>
-<div id="section-1" class="section level98">
-<p></p>
-</div>
-</div>
-<div id="begin-with-all-stocked-products-in-the-miniload" class="section level2">
-<h2>Begin with all stocked products in the Miniload</h2>
-</div>
-<div id="approach" class="section level2">
-<h2>Approach</h2>
-<p>As this algorithm relies on shop demand for stocked products, so best approach may be to develop a product-level forecast.</p>
-<p>A simple forecast based on average daily sales * probability of sale is used to determine expected demand</p>
-</div>
-<div id="assign-likelihood-of-tote-selection-for-totes-containing-chosen-products-and-meeting-units-criteria" class="section level2">
-<h2>Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria</h2>
+<div id="details-on-current-implementation" class="section level3">
+<h3>Details on Current Implementation:</h3>
 <ul>
-<li><strong>Decision Rule</strong>:</li>
+<li>Subsystem Connection Name: Motion</li>
+<li>Package Name: P_JLP_MOVES
+<ul>
+<li>Contains the following Procedures:
+<ul>
+<li>movesOsr</li>
+<li>movesAsrs</li>
+<li>automateMoves</li>
+<li>deleteMoves</li>
+<li>deleteAllocations</li>
+</ul></li>
+</ul></li>
+</ul>
+</div>
+<div id="approach" class="section level3">
+<h3>Approach</h3>
+<ul>
+<li>A simple forecast based on average daily sales * probability of sale is used to determine expected demand</li>
+<li>Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria</li>
 <li>For each product in ASRS, sort totes in ascending order of units</li>
 <li>Products in OSR whose units &lt; Expected Units
 <ul>
@@ -405,7 +410,16 @@ summary {
 <li>Send extra totes to ASRS, where necessary</li>
 <li>Do nothing where OSR Units = Expected Units</li>
 </ul></li>
-<li>To track the accuracy of the algorithm, the table TEST_MINILOAD_REORG has been created in Simulation Server, and will capture the output upon execution. This table will be dropped upon completion of the project, as this output will be written directly into IMP_CONT_INFO_MAN in motion.</li>
+<li><p>To track the accuracy of the algorithm, the table TEST_MINILOAD_REORG has been created in Simulation Server, and will capture the output upon execution. This table will be dropped upon completion of the project, as this output will be written directly into IMP_CONT_INFO_MAN in motion.</p></li>
+<li>Current MoveMaker Implementation Details / Planned Changes
+<ul>
+<li>Procedure Run Time: 17:15
+<ul>
+<li>This is the time the table is IMP_CONT_INFO_MAN is populated with expected demand for the next day</li>
+<li>New implementation will replace this procedure</li>
+</ul></li>
+<li>An additional table MOVE_MAKER_LPN_LOOKUP will be populated with the licenceplate, along with the corresponding prod_ids. This has the same row count as the data in IMP_CONT_INFO_MAN.</li>
+</ul></li>
 </ul>
 </div>
 

@@ -74,7 +74,7 @@ where order_type = 'SHOP'
   collect() %>%
   mutate(EXP_DEMAND=ceiling(EXP_DEMAND)) %>%
   select(PROD_ID, LIKELIHOOD, EXP_DEMAND) %>%
-  #filter(LIKELIHOOD > 0.5) %>% # specify acceptable minimum likelihood
+  filter(LIKELIHOOD > 0.5) %>% # specify acceptable minimum likelihood
   setDT(.)
 
 

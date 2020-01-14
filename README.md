@@ -1,20 +1,25 @@
 ##################################################################################################
-### Author: Isaac Adjei-Attah
 ### MoveMaker Algorithm
+### Author: Isaac Adjei-Attah
+
 ### Objective: 
-###  To develop and effective Miniload re-organisation model based on anticipated shop order demand
+To develop and effective Miniload re-organisation model based on anticipated shop order demand
 ##################################################################################################
 
-## Begin with all stocked products in the Miniload
+### Details on Current Implementation:
++ Subsystem Connection Name: Motion
++ Package Name: P_JLP_MOVES
+  + Contains the following Procedures:
+    + movesOsr
+    + movesAsrs
+    + automateMoves
+    + deleteMoves
+    + deleteAllocations
 
-## Approach
-As this algorithm relies on shop demand for stocked products, so best approach may be to develop a 
-product-level forecast.
+### Approach
 
-A simple forecast based on average daily sales * probability of sale is used to determine expected demand
-
-## Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria
-+ **Decision Rule**:
++ A simple forecast based on average daily sales * probability of sale is used to determine expected demand
++ Assign likelihood of tote selection for totes containing chosen products, and meeting units criteria
 + For each product in ASRS, sort totes in ascending order of units
 + Products in OSR whose units < Expected Units
     + Move required number of totes where total stock >= required difference fro ASRS to OSR
