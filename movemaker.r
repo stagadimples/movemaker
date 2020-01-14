@@ -17,6 +17,9 @@ livecon <- dbConnect(odbc::odbc(), dsn = "live", pwd = "atis0815")
 simcon <- dbConnect(odbc::odbc(), dsn = "simulation", pwd = "sim123")
 ##########################################################################################################
 
+
+# Stock Detail from Miniload
+###############################################################################################################
 stock <- tbl(livecon, sql(
 "
 select location
@@ -65,73 +68,58 @@ from
   setDT(.)
 
 
-daily_sales <- tbl(livecon, sql(
-"
-select * from average_daily_sales@k1233simu
-where order_type = 'SHOP'
-"
-)) %>%
-  collect() %>%
-  mutate(EXP_DEMAND=ceiling(EXP_DEMAND)) %>%
-  select(PROD_ID, LIKELIHOOD, EXP_DEMAND) %>%
-  filter(LIKELIHOOD > 0.5) %>% # specify acceptable minimum likelihood
-  setDT(.)
 
+# EXPECTED DEMAND
+##########################################################################################################
 
-# Demand data that is almost guaranteed to be accurate - likelihood has been set to 1
-confirmed_sales <- tbl(livecon, sql(
-"
- select prod_id
-  , sum(demand)demand
- from
- (
-   select p.system_product_id prod_id
-    , sum(lc.requested_quantity)demand
-   from originator_headers orh
-    inner join originator_lines orl on orh.id = orl.originator_header_id
-    inner join logical_components lc on orl.id = lc.originator_line_id
-    inner join products p on orl.item_id = p.id
-   where lc.dtype = 'KiDropPointLineK1233'
-    and lc.state = 4
-   group by p.system_product_id
-   
-   union all
-   
-   select prod_id
-    , unit_qty
-   from d2c_next_day_demand
-   where trunc(input_date) = trunc(sysdate)
- )
- group by prod_id
-"
-)) %>%
+# Confirmed Sales - likelihood has been set to 1
+confirmed_sales <- tbl(simcon, sql("select * from confirmed_sales")) %>%
   collect() %>%
   mutate(LIKELIHOOD=1.0) %>%
   select(PROD_ID, LIKELIHOOD, EXP_DEMAND=DEMAND) %>%
   setDT(.)
 
 
+# Forecasted Demand - Based on Average Daily Sales
+
+forecast_demand <- tbl(simcon, sql("select * from average_daily_sales where order_type = 'SHOP'")) %>%
+  collect() %>%
+  mutate(EXP_DEMAND=ceiling(EXP_DEMAND)) %>%
+  select(PROD_ID, LIKELIHOOD, EXP_DEMAND) %>%
+  filter(LIKELIHOOD > 0.95) %>% # specify acceptable minimum likelihood
+  setDT(.)
+
+
 # products with expected sales, but not captured in confirmed sales
-daily_sales_only <- data.table(data.frame(PROD_ID = setdiff(daily_sales$PROD_ID, confirmed_sales$PROD_ID)))
+surplus_demand <- data.table(data.frame(PROD_ID = setdiff(forecast_demand$PROD_ID, confirmed_sales$PROD_ID)))
 
-setkey(daily_sales, PROD_ID)
-setkey(daily_sales_only, PROD_ID)
+setkey(forecast_demand, PROD_ID)
+setkey(surplus_demand, PROD_ID)
 
 
-additional_sales <- daily_sales[daily_sales_only]
-
+additional_sales <- forecast_demand[surplus_demand]
 total_expected_demand <- rbind(confirmed_sales, additional_sales)
 
 ###############################################################################################################
 
-asrs <- merge(stock[LOCATION == 'ASRS'], total_expected_demand, by.x = "ITEM_NUMBER", by.y = "PROD_ID")[, TOTAL_STOCK := sum(QUANTITY), by=ITEM_NUMBER]
-osr <- merge(stock[LOCATION == 'OSR'], total_expected_demand, by.x = "ITEM_NUMBER", by.y = "PROD_ID")[, TOTAL_STOCK := sum(QUANTITY), by=ITEM_NUMBER]
+# Stocked Products with Demand
+
+asrs_with_demand <- merge(stock[LOCATION == 'ASRS'], total_expected_demand, by.x = "ITEM_NUMBER", by.y = "PROD_ID")[, TOTAL_STOCK := sum(QUANTITY), by=ITEM_NUMBER]
+osr_with_demand <- merge(stock[LOCATION == 'OSR'], total_expected_demand, by.x = "ITEM_NUMBER", by.y = "PROD_ID")[, TOTAL_STOCK := sum(QUANTITY), by=ITEM_NUMBER]
 
 
 # Begin with products in the OSR
 ##############################################################################################################
 
-to_asrs <- osr %>%
+# No demand expected for these products - Send to ASRS where currently stocked in OSR
+to_asrs1 <- stock %>%
+  left_join(total_expected_demand, by = c("ITEM_NUMBER" = "PROD_ID")) %>%
+  filter(LOCATION == 'OSR' & is.na(EXP_DEMAND)) %>%
+  select(ITEM_NUMBER, LOCATION, LOCNO, LICENCEPLATE, QUANTITY) %>%
+  setDT(.)
+
+# Pproducts with more than required minimum to fulfill expected demand
+to_asrs2 <- osr_with_demand %>%
   mutate(CLASSIFICATION = if_else(EXP_DEMAND <= CUMUNITS, 1, 0)) %>%
   filter(TOTAL_STOCK >= EXP_DEMAND) %>%
   group_by(ITEM_NUMBER, CLASSIFICATION) %>%
@@ -141,8 +129,12 @@ to_asrs <- osr %>%
   select(ITEM_NUMBER, LOCATION, LOCNO, LICENCEPLATE, QUANTITY) %>%
   setDT(.)
 
+to_asrs <- rbind(to_asrs1, to_asrs2)
+
+
+
 ## Determine Shortfall in OSR
-osr_shortfall <- osr %>%
+osr_shortfall <- osr_with_demand %>%
   mutate(CLASSIFICATION = if_else(EXP_DEMAND <= CUMUNITS, 1, 0)) %>%
   filter(TOTAL_STOCK < EXP_DEMAND) %>%
   group_by(ITEM_NUMBER) %>%
@@ -151,7 +143,7 @@ osr_shortfall <- osr %>%
 
 
 # From ASRS to OSR to cover shortfall
-to_osr1 <- asrs %>%
+to_osr1 <- asrs_with_demand %>%
   inner_join(osr_shortfall, by="ITEM_NUMBER") %>%
   mutate(CLASSIFICATION = if_else(REQUIRED <= CUMUNITS, 1, 0)) %>%
   group_by(ITEM_NUMBER, CLASSIFICATION) %>%
@@ -162,8 +154,8 @@ to_osr1 <- asrs %>%
   setDT(.)
 
 # Products in ASRS not in OSR, with expected sales
-to_osr2 <- asrs %>%
-  inner_join(data.frame(ITEM_NUMBER = setdiff(asrs$ITEM_NUMBER, osr$ITEM_NUMBER), stringsAsFactors = F), by="ITEM_NUMBER") %>%
+to_osr2 <- asrs_with_demand %>%
+  inner_join(data.frame(ITEM_NUMBER = setdiff(asrs_with_demand$ITEM_NUMBER, osr_with_demand$ITEM_NUMBER), stringsAsFactors = F), by="ITEM_NUMBER") %>%
   mutate(CLASSIFICATION = if_else(EXP_DEMAND <= CUMUNITS, 1, 0)) %>%
   group_by(ITEM_NUMBER, CLASSIFICATION) %>%
   mutate(RNK = 1:n()) %>%
