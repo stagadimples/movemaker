@@ -48,8 +48,8 @@ forecast_demand <- tbl(simcon, sql("select * from average_daily_sales where orde
   setDT(.)
 
 
-# products with expected sales, but not captured in confirmed sales
-surplus_demand <- data.table(data.frame(PROD_ID = setdiff(forecast_demand$PROD_ID, confirmed_sales$PROD_ID)))
+# products with expected sales, but not captured in co.nfirmed sales
+surplus_demand <- data.table(data.frame(PROD_ID = setdiff(forecast_demand$PROD_ID, confirmed_sales$PROD_ID), stringsAsFactors = F))
 
 setkey(forecast_demand, PROD_ID)
 setkey(surplus_demand, PROD_ID)
