@@ -14,6 +14,7 @@ gc()
 
 ##########################################################################################################
 simcon <- dbConnect(odbc::odbc(), dsn = "simulation", pwd = "sim123")
+livecon <- dbConnect(odbc::odbc(), dsn = "live", pwd = "atis0815")
 ##########################################################################################################
 
 
@@ -23,6 +24,115 @@ stock <- tbl(simcon, sql("select * from miniload_stock")) %>%
   collect() %>%
   setDT(.)
 
+
+
+# Get sale price information from host import event message
+sql_orh <- 
+  "
+  select raw_message 
+  from host_imp_event 
+  where telegram_type = 'ORH'
+    and trunc(creation_time) = trunc(sysdate) - 1
+"
+
+# full structure of messages
+
+orh_ptr <- tbl(livecon, sql(sql_orh))
+
+orh <- orh_ptr %>%
+  collect() %>%
+  select(RAW_MESSAGE)
+
+messageList <- strsplit(orh$RAW_MESSAGE, split = "\\|")
+messageList <- unlist(messageList)
+
+# Get separate Lists for ORH and ORL
+orlList <- messageList[substr(messageList, 39, 41) == "ORL"]
+
+# Split ORL based on specification
+orl_func <- function(x){
+  substring(x, 
+            c(1, 39, 45, 53, 59, 63, 65, 85, 90, 98, 104, 110, 111, 161, 167, 171), 
+            c(38, 44, 52, 58, 62, 64, 84, 89, 97, 103, 109, 110, 160, 166, 170, 180)
+  )
+}
+
+orl_labels <- c("seqno", "recordid", "date", "time", "dc", "hostid", 
+                "orderid", "orderline", "prodid", "max_qty", "min_qty", "clearind", "glmessage", "refno1", "refno2", "saleprice")
+
+orl_table_temp <- lapply(orlList, orl_func)
+orl_table <- as.data.frame(do.call("rbind", orl_table_temp), stringsAsFactors=F)
+names(orl_table) <- orl_labels
+
+
+
+# Refine Outputs
+refineOutput <- function(x){
+  trimws(x)
+  str_replace(x, "@", "")
+}
+
+orl_table[] <- lapply(orl_table[], refineOutput)
+
+orl_table[c("dc", "orderline", "max_qty", "min_qty", "saleprice")] <- lapply(orl_table[c("dc", "orderline", "max_qty", "min_qty", "saleprice")], as.numeric)
+
+
+prices <- orl_table %>%
+  filter(complete.cases(.)) %>%
+  mutate(saleprice = saleprice / 100) %>%
+  group_by(prodid) %>%
+  summarise(saleprice = min(saleprice)) %>%
+  select(prodid, saleprice) %>%
+  unique(.)
+
+
+
+# Prepare forecast
+
+# Training Set
+demand_train <- tbl(simcon, sql("select * from shop_demand_training_data")) %>%
+  collect() %>%
+  sample_n(nrow(.)) %>%
+  left_join(prices, by = c("PROD_ID" = "prodid")) %>%
+  select(-c(PROD_ID, SALE_CLASS, RNK)) %>%
+  mutate(DIRECTORATE = factor(DIRECTORATE),
+         PARTNER_DISCOUNT = factor(PARTNER_DISCOUNT),
+         HANGING_GARMENT = factor(HANGING_GARMENT),
+         SOR_INDICATOR = factor(SOR_INDICATOR),
+         SALEPRICE = if_else(saleprice == 0 | is.na(saleprice), SELLING_PRICE, saleprice),
+         REDUCTION = SELLING_PRICE - SALEPRICE) %>%
+  select(-saleprice, -SELLING_PRICE, -SOLD_REP_UNITS, -SALEPRICE, -REDUCTION, SELLING_PRICE, REDUCTION, SOLD_REP_UNITS) %>%
+  setDT(.)
+
+
+# Forecast
+forecast_demand <- tbl(simcon, sql("select * from shop_demand_current_features")) %>%
+  collect() %>%
+  sample_n(nrow(.)) %>%
+  left_join(prices, by = c("PROD_ID" = "prodid")) %>%
+  mutate(DIRECTORATE = factor(DIRECTORATE),
+         PARTNER_DISCOUNT = factor(PARTNER_DISCOUNT),
+         HANGING_GARMENT = factor(HANGING_GARMENT),
+         SOR_INDICATOR = factor(SOR_INDICATOR),
+         SALEPRICE = if_else(saleprice == 0 | is.na(saleprice), SELLING_PRICE, saleprice),
+         REDUCTION = SELLING_PRICE - SALEPRICE) %>%
+  select(-saleprice, -SELLING_PRICE, -SALEPRICE, -REDUCTION, SELLING_PRICE, REDUCTION) %>%
+  setDT(.)
+
+
+# K-Nearest Neighbours Model
+mod_knn <- train(SOLD_REP_UNITS ~., data = subset(demand_train), method="knn",
+                 preProcess = c("center", "scale"),
+                 trControl=trainControl(method = "repeatedcv",
+                                        repeats = 3))
+
+
+# Update Forecast Base with Forecast Figures
+
+forecast_demand$FORECAST <- round(predict(mod_knn, newdata = subset(forecast_demand, select = -PROD_ID))) %>%
+  as.data.table(.)
+
+forecast_demand <- forecast_demand[FORECAST > 0]
 
 
 # EXPECTED DEMAND
@@ -37,17 +147,6 @@ confirmed_sales <- tbl(simcon, sql("select * from confirmed_sales")) %>%
   setDT(.)
 
 
-# Forecasted Demand - Based on Average Daily Sales
-
-forecast_demand <- tbl(simcon, sql("select * from average_daily_sales where order_type = 'SHOP'")) %>%
-  collect() %>%
-  inner_join(data.frame(PROD_ID = unique(stock$ITEM_NUMBER), stringsAsFactors=F), by = "PROD_ID") %>% 
-  mutate(EXP_DEMAND=ceiling(EXP_DEMAND)) %>%
-  select(PROD_ID, LIKELIHOOD, EXP_DEMAND) %>%
-  filter(LIKELIHOOD > 0.95) %>% # specify acceptable minimum likelihood
-  setDT(.)
-
-
 # products with expected sales, but not captured in co.nfirmed sales
 surplus_demand <- data.table(data.frame(PROD_ID = setdiff(forecast_demand$PROD_ID, confirmed_sales$PROD_ID), stringsAsFactors = F))
 
@@ -55,10 +154,14 @@ setkey(forecast_demand, PROD_ID)
 setkey(surplus_demand, PROD_ID)
 
 
-additional_sales <- forecast_demand[surplus_demand]
-total_expected_demand <- rbind(confirmed_sales, additional_sales)
+additional_sales <- forecast_demand[surplus_demand, ]
+additional_sales[, EXP_DEMAND := FORECAST]
+total_expected_demand <- rbind(subset(confirmed_sales, select = c(PROD_ID, EXP_DEMAND)), subset(additional_sales, select = c(PROD_ID, EXP_DEMAND)))
 
 ###############################################################################################################
+
+
+
 
 # Stocked Products with Demand
 
@@ -129,7 +232,7 @@ to_osr <- to_osr1 %>%
 # Prescribed moves based on expected shop demand for the day
 # This table may now be used to populate imp_cont_info_man in motion. The column names have been carefully chosen to allign the 2 tables 
 moves <- rbind(cbind(TARGET_STATE_NAME = "Z-MOVE_ASRS", to_asrs), cbind(TARGET_STATE_NAME = "Z-MOVE_OSR", rbind(to_osr1, to_osr2)))[
-  , .(LICENCEPLATE, TARGET_STATE_NAME, SOURCE_ZONE_NAME="Z-ABIN2BIN", TIMESTAMP = as.character(Sys.time()), STATUS = 90)]
+  , .(LICENCEPLATE, TARGET_STATE_NAME, SOURCE_ZONE_NAME="Z-ABIN2BIN", TIMESTAMP = as.character(Sys.time()), STATUS = 10)]
 
 
 # Write moves into a table in Simulation Server
@@ -147,4 +250,4 @@ dbWriteTable(simcon,
              )
 
 # Disconnect from database
-dbDisconnect(simcon)
+dbDisconnect(simcon); dbDisconnect(livecon)
