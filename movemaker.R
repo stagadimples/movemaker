@@ -5,6 +5,7 @@ library(tidyverse)
 library(dbplyr)
 library(lubridate)
 library(data.table)
+library(caret)
 
 # Garbage Collection
 ################################################################################
@@ -20,7 +21,52 @@ livecon <- dbConnect(odbc::odbc(), dsn = "live", pwd = "atis0815")
 
 # Stock Detail from Miniload
 ###############################################################################################################
-stock <- tbl(simcon, sql("select * from miniload_stock")) %>%
+
+stock_sql <-
+  "
+   select location
+    , locno
+    , z_pos
+    , loccount
+    , licenceplate
+    , item_number
+    , quantity
+    , sum(quantity) over (partition by item_number, location order by quantity desc, loccount desc, locno, z_pos, licenceplate)cumunits
+    , row_number() over (partition by item_number, location order by quantity desc, loccount desc, locno, z_pos, licenceplate)itemrank
+  from
+  (
+    select location
+      , licenceplate
+      , item_number
+      , quantity
+      , count(*) over (partition by item_number, locno, location order by locno)loccount
+      , locno
+      , z_pos
+    from
+    (
+     select case
+        when substr(l.locno, 1, 3) ='OSM' then 'OSR'
+        when substr(l.locno, 1, 3) = 'ASM' then 'ASRS'
+      end location
+      , c.licenceplate
+      , i.item_number
+      , st.act_quantity quantity
+      , l.locno
+      , c.z_pos
+     from stock@mcs_live st
+      inner join cont@mcs_live c on st.cont_id = c.id
+      inner join item@mcs_live i on st.item_id = i.id
+      inner join loc@mcs_live l on c.loc_id = l.id
+      inner join tm_locs@mcs_live tl on c.loc_id = tl.loc_id
+      inner join states@mcs_live s on tl.state_id = s.id
+     where c.cont_type_id != 0
+      and substr(l.locno, 1, 3) in ('OSM', 'ASM')
+      and s.domain_id = 2
+    )
+  )
+"
+
+stock <- tbl(simcon, sql(stock_sql)) %>%
   collect() %>%
   setDT(.)
 

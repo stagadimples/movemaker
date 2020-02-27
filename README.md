@@ -16,6 +16,17 @@ To develop and effective Miniload re-organisation model based on anticipated sho
     + deleteMoves
     + deleteAllocations
 
+
+#### Current Approach
++ Table **imp_cont_info_man** in motion is the base table storing all details of totes to be moved between the ASRS and OSR of the miniload
+storage area.
++ Current implementation does not make any moves in relation to forecasted demand and, as such, moves less than totes than new implementation.
++ af.insert_cont_info_man
+
+
+### Performance Measurement
+
+
 ### Approach
 
 + A simple forecast based on average daily sales * probability of sale is used to determine expected demand

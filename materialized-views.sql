@@ -1,8 +1,9 @@
 /* Current Features -- Serves as Input into Model 
   Must be converted into a materialized view
 */
+drop materialized view mv_movemaker_demand_features;
 
-create materialized view mv_shop_demand_current_features
+create materialized view mv_movemaker_demand_features
 build immediate
 refresh complete
 on demand
@@ -74,6 +75,7 @@ select *
 from
 (
   select
+    trunc(sysdate) as insert_date,
     p.prod_id,
     dis.directorate,
     p.hanging_garment,
