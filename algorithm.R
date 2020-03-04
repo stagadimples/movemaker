@@ -41,7 +41,7 @@ set.seed(101)
 raw_data1 <- tbl(simcon, sql(data_sql)) %>%
   collect() %>%
   filter(MOVE == 0) %>%
-  slice(1:5000) %>%
+  slice(1:10000) %>%
   select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO) %>%
   filter(complete.cases(.))
 
@@ -49,7 +49,7 @@ raw_data1 <- tbl(simcon, sql(data_sql)) %>%
 raw_data2 <- tbl(simcon, sql(data_sql)) %>%
   collect() %>%
   filter(MOVE == 1) %>%
-  slice(1:5000) %>%
+  slice(1:10000) %>%
   select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO) %>%
   filter(complete.cases(.))
 
@@ -60,8 +60,8 @@ raw_data <- rbind(raw_data1, raw_data2)
 raw_data[c("LOCATION", "Z_POS", "CLASSIFICATION", "DIRECTORATE", "HANGING_GARMENT", "SOR_INDICATOR", "MOVE", "CONFIRMED", "ITEM_GROUP_NAME")] <-
   lapply(raw_data[c("LOCATION", "Z_POS", "CLASSIFICATION", "DIRECTORATE", "HANGING_GARMENT", "SOR_INDICATOR", "MOVE", "CONFIRMED", "ITEM_GROUP_NAME")], as.factor)
 
-
-
+# Ensure move = 1 is associated with the positive class, by placing it as the first level
+raw_data$MOVE <- relevel(raw_data$MOVE, ref = "1")
 
 set.seed(102)
 
@@ -85,6 +85,9 @@ mod_rf <- train(
                   repeats = 10
                   )
   )
+
+
+
 
 
 # Predict Test Sets (Using Trained Models)
