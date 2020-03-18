@@ -41,7 +41,7 @@ set.seed(101)
 raw_data1 <- tbl(simcon, sql(data_sql)) %>%
   collect() %>%
   filter(MOVE == 0) %>%
-  slice(1:10000) %>%
+  sample_n(5000) %>%
   select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO) %>%
   filter(complete.cases(.))
 
@@ -49,7 +49,7 @@ raw_data1 <- tbl(simcon, sql(data_sql)) %>%
 raw_data2 <- tbl(simcon, sql(data_sql)) %>%
   collect() %>%
   filter(MOVE == 1) %>%
-  slice(1:10000) %>%
+  sample_n(5000) %>%
   select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO) %>%
   filter(complete.cases(.))
 
@@ -57,11 +57,12 @@ raw_data2 <- tbl(simcon, sql(data_sql)) %>%
 raw_data <- rbind(raw_data1, raw_data2)
 
 
-raw_data[c("LOCATION", "Z_POS", "CLASSIFICATION", "DIRECTORATE", "HANGING_GARMENT", "SOR_INDICATOR", "MOVE", "CONFIRMED", "ITEM_GROUP_NAME")] <-
-  lapply(raw_data[c("LOCATION", "Z_POS", "CLASSIFICATION", "DIRECTORATE", "HANGING_GARMENT", "SOR_INDICATOR", "MOVE", "CONFIRMED", "ITEM_GROUP_NAME")], as.factor)
+raw_data$ITEM_GROUP_NAME <- factor(raw_data$ITEM_GROUP_NAME, levels = c("FIF", "FSH", "SHO", "SIO", "SUN", "XXX", "YLG", "KAB"))
+raw_data$MOVE <- factor(raw_data$MOVE, levels = c(1, 0))
 
-# Ensure move = 1 is associated with the positive class, by placing it as the first level
-raw_data$MOVE <- relevel(raw_data$MOVE, ref = "1")
+raw_data[c("LOCATION", "Z_POS", "CLASSIFICATION", "DIRECTORATE", "HANGING_GARMENT", "SOR_INDICATOR", "MOVE", "CONFIRMED")] <-
+  lapply(raw_data[c("LOCATION", "Z_POS", "CLASSIFICATION", "DIRECTORATE", "HANGING_GARMENT", "SOR_INDICATOR", "MOVE", "CONFIRMED")], as.factor)
+
 
 set.seed(102)
 
@@ -87,11 +88,100 @@ mod_rf <- train(
   )
 
 
+# Support Vector Machines
+mod_svm <- train(
+  MOVE ~., data = training_set, 
+  method = "svmRadial",
+  trControl = trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 10
+  )
+)
+
+
+# Generalized Linear Model
+mod_glm <- train(
+  MOVE ~., data = training_set, 
+  method = "glm",
+  trControl = trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 10
+  )
+)
+
+# Partial Least Squares
+
+mod_c5 <- train(
+  MOVE ~., data = training_set, 
+  method = "C5.0",
+  trControl = trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 10
+  )
+)
+
+
+
+
+# Partial Least Squares
+
+mod_pls <- train(
+  MOVE ~., data = training_set, 
+  method = "pls",
+  trControl = trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 10
+  )
+)
+
+
+# Multivariate Adaptive Splines (Earth)
+
+mod_earth <- train(
+  MOVE ~., data = training_set, 
+  method = "earth",
+  trControl = trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 10
+  )
+)
+
+
+
+
+# Multivariate Adaptive Splines (Earth)
+
+mod_rp <- train(
+  MOVE ~., data = training_set, 
+  method = "rpart",
+  trControl = trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 10
+  )
+)
 
 
 
 # Predict Test Sets (Using Trained Models)
 prediction_rf <- predict(mod_rf, newdata = test_set)
+
+prediction_glm <- predict(mod_glm, newdata = test_set)
+
+prediction_c5 <- predict(mod_c5, newdata = test_set)
+
+prediction_pls <- predict(mod_pls, newdata = test_set)
+
+prediction_earth <- predict(mod_earth, newdata = test_set)
+
+prediction_svm <- predict(mod_svm, newdata = test_set)
+
+prediction_rp <- predict(mod_rp, newdata = test_set)
 
 
 # Model Selection (Based on Model Prediction Accuracy)
@@ -101,7 +191,23 @@ prediction_rf <- predict(mod_rf, newdata = test_set)
 # Random Forest Model
 confusionMatrix(prediction_rf, test_set$MOVE)
 
+# Generalised Linear Model
+confusionMatrix(prediction_glm, test_set$MOVE)
 
+# Generalised Linear Model
+confusionMatrix(prediction_c5, test_set$MOVE)
+
+# Generalised Linear Model
+confusionMatrix(prediction_pls, test_set$MOVE)
+
+# Generalised Linear Model
+confusionMatrix(prediction_earth, test_set$MOVE)
+
+# Generalised Linear Model
+confusionMatrix(prediction_svm, test_set$MOVE)
+
+# Generalised Linear Model
+confusionMatrix(prediction_rp, test_set$MOVE)
 # Chosen Model: Random Forest
 # In-Sample Accuracy:
 # Out-of-Sample Accuracy: 
@@ -109,4 +215,16 @@ confusionMatrix(prediction_rf, test_set$MOVE)
 
 
 saveRDS(mod_rf, "models/random-forest-model.rds")
+
+saveRDS(mod_glm, "models/glm-model.rds")
+
+saveRDS(mod_c5, "models/c5-model.rds")
+
+saveRDS(mod_pls, "models/pls-model.rds")
+
+saveRDS(mod_earth, "models/earth-model.rds")
+
+saveRDS(mod_svm, "models/svm-model.rds")
+
+saveRDS(mod_rp, "models/rp-model.rds")
 
