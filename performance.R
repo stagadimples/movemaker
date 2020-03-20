@@ -44,6 +44,7 @@ data_sql <-
 
 raw_data <- tbl(simcon, sql(data_sql)) %>%
   collect()%>%
+  select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO, -HANGING_GARMENT) %>%
   filter(complete.cases(.))
   
 

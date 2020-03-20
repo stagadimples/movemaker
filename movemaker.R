@@ -71,7 +71,6 @@ stock <- tbl(simcon, sql(stock_sql)) %>%
   setDT(.)
 
 
-
 # Get sale price information from host import event message
 sql_orh <- 
   "

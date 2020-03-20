@@ -33,28 +33,13 @@ data_sql <-
       left join confirmed_sales cs on mst.item_number = cs.prod_id
   "
 
-set.seed(101)
-
 # Because of the biased distribution classes, separate data sets have been generated
 # and recombined in hopes of creating a balanced distribution and improving the performance of the model
 
-raw_data1 <- tbl(simcon, sql(data_sql)) %>%
+raw_data <- tbl(simcon, sql(data_sql)) %>%
   collect() %>%
-  filter(MOVE == 0) %>%
-  sample_n(5000) %>%
-  select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO) %>%
+  select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO, -HANGING_GARMENT) %>%
   filter(complete.cases(.))
-
-
-raw_data2 <- tbl(simcon, sql(data_sql)) %>%
-  collect() %>%
-  filter(MOVE == 1) %>%
-  sample_n(5000) %>%
-  select(-INSERT_DATE, -ITEM_NUMBER, -LICENCEPLATE, -LOCNO) %>%
-  filter(complete.cases(.))
-
-
-raw_data <- rbind(raw_data1, raw_data2)
 
 
 raw_data$ITEM_GROUP_NAME <- factor(raw_data$ITEM_GROUP_NAME, levels = c("FIF", "FSH", "SHO", "SIO", "SUN", "XXX", "YLG", "KAB"))
@@ -75,6 +60,16 @@ test_set <- raw_data[-intrain, ]
 
 # Train Models
 
+# R Part
+mod_rp <- train(
+  MOVE ~., data = training_set, 
+  method = "rpart",
+  trControl = trainControl(
+    method = "repeatedcv",
+    number = 10,
+    repeats = 10
+  )
+)
 
 # Random Forest
 mod_rf <- train(
